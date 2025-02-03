@@ -44,14 +44,14 @@ public class MessageService {
             messageRepository.deleteById(id);
             return ResponseEntity.ok(1);
         }
-        return ResponseEntity.ok().body(null);
+        return ResponseEntity.ok("Message not found");
     }
 
     public ResponseEntity<?> updateMessage(int id, Message message) {
         Optional<Message> existing = messageRepository.findById(id);
 
         if(existing.isPresent() && message.getMessageText() != null && !message.getMessageText().isBlank()
-        || message.getMessageText().length() <= 25) {
+        && message.getMessageText().length() <= 25) {
             Message updateMessage = existing.get();
             updateMessage.setMessageText(message.getMessageText());
             messageRepository.save(updateMessage);
@@ -61,7 +61,7 @@ public class MessageService {
         return ResponseEntity.badRequest().body("Error updating message");
     }
     
-    public Optional<Message> getMessagesFromUser(int id) {
+    public List<Message> getMessagesFromUser(int id) {
         return messageRepository.findPostedBy(id);
     }
 }
