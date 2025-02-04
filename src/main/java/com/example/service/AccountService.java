@@ -1,45 +1,63 @@
 package com.example.service;
 
+import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.example.repository.AccountRepository;
 import com.example.entity.Account;
 
 
 @Service
-public class AccountService {
-
-    private final AccountRepository accountRepository;
+public class AccountService implements AccountServiceInterface {
 
     @Autowired
-    public AccountService(AccountRepository accountRepository) {
-        this.accountRepository = accountRepository;
+    private AccountRepository accountRepository;
+
+    @Override
+    public List<Account> getAllAccounts() {
+        return accountRepository.findAll();
     }
 
-    public ResponseEntity<?> registerAccount(Account account) {
-        if(account.getUsername() == null || account.getUsername().isBlank() 
-        || account.getPassword() == null || account.getPassword().length() < 4) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid username or password");
-        }
-        if(accountRepository.findByUsername(account.getUsername()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
-        }
-        
-        return ResponseEntity.status(HttpStatus.CREATED).body(accountRepository.save(account));
+    @Override
+    public Account getAccountById(Integer id) {
+        Optional<Account> optionalAccount = accountRepository.findById(id);
+        return optionalAccount.orElse(null);
     }
 
-    public ResponseEntity<?> loginUser(Account account) {
-        Account existing = accountRepository.findByUsername(account.getUsername())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
+    @Override
+    public Account saveAccount(Account account) {
+        return accountRepository.save(account);
+    }
 
-        if(!existing.getPassword().equals(account.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid password");
+    @Override
+    public Account updateAccount(Integer id, Account account) {
+        if (accountRepository.existsById(id)) {
+            return accountRepository.save(account);
         }
-        return ResponseEntity.ok(existing);
+        return null;
+    }
+
+    @Override
+    public void deleteAccount(Integer id) {
+        accountRepository.deleteById(id);
+    }
+
+    @Override
+    public Account getAccountByUsername(String username) {
+        return accountRepository.findByUsername(username);
+    }
+
+    @Override
+    public Account authenticate(String username, String password) {
+        Account account = getAccountByUsername(username);
+        if (account != null && account.getPassword().equals(password)) {
+            return account;
+        }
+        return null;
     }
 }

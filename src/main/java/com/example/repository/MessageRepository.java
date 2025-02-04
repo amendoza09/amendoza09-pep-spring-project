@@ -2,15 +2,22 @@ package com.example.repository;
 
 import com.example.entity.Message;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Integer>{
 
-    @Query("SELECT m FROM message WHERE m.postedBy.accountId = :accountId")
-    List<Message> findPostedBy(@Param("accountId") int accountId);
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM Message m WHERE m.id = ?1")
+    int deleteMessageById(Integer messageId);
+
+    @Query("SELECT m FROM Message m WHERE m.posted_by = ?1")
+    List<Message> findAllByPosted_by(Integer posted_by);
+
 }

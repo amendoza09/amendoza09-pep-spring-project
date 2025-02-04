@@ -4,64 +4,76 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import com.example.entity.Account;
 import com.example.entity.Message;
+import com.example.repository.AccountRepository;
 import com.example.repository.MessageRepository;
 
 @Service
-public class MessageService {
-
-    private final MessageRepository messageRepository;
+public class MessageService implements MessageServiceInterface {
 
     @Autowired
-    public MessageService (MessageRepository msgRepository) {
-        this.messageRepository = msgRepository;
-    }
+    private MessageRepository messageRepository;
 
-    public ResponseEntity<?> createMessage(Message message) {
-        if(message.getMessageText() == null || message.getMessageText().length() > 255 || message.getMessageText().isBlank()) {
-            return ResponseEntity.badRequest().body("Message cannot be blank or exceed 255 characters");
-        }
-
-        Message newMessage = messageRepository.save(message);
-        return ResponseEntity.ok(newMessage);
-    }
-
+    @Override
     public List<Message> getAllMessages() {
         return messageRepository.findAll();
     }
 
-    public ResponseEntity<?> getMessageById(int id) {
-        Optional<Message> message = messageRepository.findById(id);
-
-        return message.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.ok().body(null));
+    @Override
+    public Message getMessageById(Integer id) {
+        Optional<Message> optionalMessage = messageRepository.findById(id);
+        return optionalMessage.orElse(null);
     }
 
-    public ResponseEntity<?> deleteMessage(int id) {
-        if(messageRepository.existsById(id)) {
-            messageRepository.deleteById(id);
-            return ResponseEntity.ok(1);
+    @Override
+    public Message saveMessage(Message message) {
+        return messageRepository.save(message);
+    }
+
+    @Override
+    public Message updateMessage(Integer id, Message message) {
+        // Check if the message exists in the database
+        if (messageRepository.existsById(id)) {
+
+            // Check if the message text is empty
+            if (message.getMessageText().isEmpty()) {
+                throw new IllegalArgumentException("Message text cannot be empty.");
+            }
+
+            // Check if the message text exceeds 255 characters
+            if (message.getMessageText().length() > 255) {
+                throw new IllegalArgumentException("Message text exceeds the allowable limit.");
+            }
+
+            // If the checks pass, save the message and return
+            return messageRepository.save(message);
         }
-        return ResponseEntity.ok("Message not found");
+        return null; // If the message doesn't exist, return null
     }
 
-    public ResponseEntity<?> updateMessage(int id, Message message) {
-        Optional<Message> existing = messageRepository.findById(id);
-
-        if(existing.isPresent() && message.getMessageText() != null && !message.getMessageText().isBlank()
-        && message.getMessageText().length() <= 25) {
-            Message updateMessage = existing.get();
-            updateMessage.setMessageText(message.getMessageText());
-            messageRepository.save(updateMessage);
-            return ResponseEntity.ok(1);
-        }
-
-        return ResponseEntity.badRequest().body("Error updating message");
+    @Override
+    public void deleteMessage(Integer id) {
+        messageRepository.deleteById(id);
     }
-    
-    public List<Message> getMessagesFromUser(int id) {
-        return messageRepository.findPostedBy(id);
+
+    @Override
+    public Message createMessage(Message message) {
+        // Validation and business logic can be added here
+        return messageRepository.save(message);
+    }
+
+    @Override
+    public int deleteMessageById(Integer messageId) {
+        return messageRepository.deleteMessageById(messageId);
+    }
+
+    @Override
+    public List<Message> getAllMessagesForUser(Integer userId) {
+        return messageRepository.findAllByPosted_by(userId);
     }
 }
