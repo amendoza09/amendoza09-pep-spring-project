@@ -1,79 +1,73 @@
 package com.example.service;
 
-import java.util.List;
-import java.util.Optional;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.example.entity.Account;
 import com.example.entity.Message;
+import com.example.exception.InvalidRequestException;
 import com.example.repository.AccountRepository;
 import com.example.repository.MessageRepository;
 
-@Service
-public class MessageService implements MessageServiceInterface {
+import java.util.List;
+import java.util.Optional;
 
+@Service
+public class MessageService {
+    
     @Autowired
     private MessageRepository messageRepository;
+    
+    @Autowired
+    private AccountRepository accountRepository;
+    
+    public Message createMessage(Message message) {
+        if (message.getMessageText() == null || message.getMessageText().isBlank()) {
+            throw new InvalidRequestException("Message text cannot be blank");
+        }
+        if (message.getMessageText().length() > 255) {
+            throw new InvalidRequestException("Message text cannot exceed 255 characters");
+        }
 
-    @Override
+        Optional<Account> account = accountRepository.findById(message.getPostedBy());
+        if (account.isEmpty()) {
+            throw new InvalidRequestException("User does not exist");
+        }
+
+        return messageRepository.save(message);
+    }
+    
     public List<Message> getAllMessages() {
         return messageRepository.findAll();
     }
-
-    @Override
-    public Message getMessageById(Integer id) {
-        Optional<Message> optionalMessage = messageRepository.findById(id);
-        return optionalMessage.orElse(null);
+    
+    public Optional<Message> getMessageById(Integer id) {
+        return messageRepository.findById(id);
     }
-
-    @Override
-    public Message saveMessage(Message message) {
-        return messageRepository.save(message);
-    }
-
-    @Override
-    public Message updateMessage(Integer id, Message message) {
-        // Check if the message exists in the database
+    
+    public boolean deleteMessage(Integer id) {
         if (messageRepository.existsById(id)) {
-
-            // Check if the message text is empty
-            if (message.getMessageText().isEmpty()) {
-                throw new IllegalArgumentException("Message text cannot be empty.");
-            }
-
-            // Check if the message text exceeds 255 characters
-            if (message.getMessageText().length() > 255) {
-                throw new IllegalArgumentException("Message text exceeds the allowable limit.");
-            }
-
-            // If the checks pass, save the message and return
-            return messageRepository.save(message);
+            messageRepository.deleteById(id);
+            return true;
         }
-        return null; // If the message doesn't exist, return null
+        return false;
     }
-
-    @Override
-    public void deleteMessage(Integer id) {
-        messageRepository.deleteById(id);
+    
+    public boolean updateMessage(Integer id, String message) {
+        if (message == null || message.isBlank() || message.length() > 255) {
+            return false;
+        }
+        Optional<Message> optionalMessage = messageRepository.findById(id);
+        if (optionalMessage.isPresent()) {
+            Message newMessage = optionalMessage.get();
+            newMessage.setMessageText(message);
+            messageRepository.save(newMessage);
+            return true;
+        }
+        return false;
     }
-
-    @Override
-    public Message createMessage(Message message) {
-        // Validation and business logic can be added here
-        return messageRepository.save(message);
-    }
-
-    @Override
-    public int deleteMessageById(Integer messageId) {
-        return messageRepository.deleteMessageById(messageId);
-    }
-
-    @Override
-    public List<Message> getAllMessagesForUser(Integer userId) {
-        return messageRepository.findAllByPosted_by(userId);
+    
+    public List<Message> getMessagesByUser(Integer id) {
+        return messageRepository.findByPostedBy(id);
     }
 }

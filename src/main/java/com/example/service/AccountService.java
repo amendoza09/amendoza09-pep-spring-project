@@ -1,63 +1,39 @@
 package com.example.service;
 
-import java.util.List;
-import java.util.Optional;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import com.example.repository.AccountRepository;
 import com.example.entity.Account;
+import com.example.exception.DuplicateUsernameException;
+import com.example.exception.InvalidRequestException;
+import com.example.exception.UnauthorizedException;
+import com.example.repository.AccountRepository;
 
+import java.util.Optional;
 
 @Service
-public class AccountService implements AccountServiceInterface {
-
+public class AccountService {
+    
     @Autowired
     private AccountRepository accountRepository;
 
-    @Override
-    public List<Account> getAllAccounts() {
-        return accountRepository.findAll();
-    }
-
-    @Override
-    public Account getAccountById(Integer id) {
-        Optional<Account> optionalAccount = accountRepository.findById(id);
-        return optionalAccount.orElse(null);
-    }
-
-    @Override
-    public Account saveAccount(Account account) {
+    public Account registerAccount(Account account) {
+        if (account.getUsername() == null || account.getUsername().isBlank() || 
+            account.getPassword() == null || account.getPassword().length() < 4) {
+            throw new InvalidRequestException("Invalid username or password");
+        }
+        if (accountRepository.findByUsername(account.getUsername()).isPresent()) {
+            throw new DuplicateUsernameException("Username already exists");
+        }
         return accountRepository.save(account);
     }
 
-    @Override
-    public Account updateAccount(Integer id, Account account) {
-        if (accountRepository.existsById(id)) {
-            return accountRepository.save(account);
+    public Account login(String username, String password) {
+        Optional<Account> account = accountRepository.findByUsername(username);
+        if (account.isPresent() && account.get().getPassword().equals(password)) {
+            return account.get();
         }
-        return null;
-    }
 
-    @Override
-    public void deleteAccount(Integer id) {
-        accountRepository.deleteById(id);
-    }
-
-    @Override
-    public Account getAccountByUsername(String username) {
-        return accountRepository.findByUsername(username);
-    }
-
-    @Override
-    public Account authenticate(String username, String password) {
-        Account account = getAccountByUsername(username);
-        if (account != null && account.getPassword().equals(password)) {
-            return account;
-        }
-        return null;
+        throw new UnauthorizedException("Invalid username or password");
     }
 }
